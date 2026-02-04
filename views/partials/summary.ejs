@@ -1,0 +1,175 @@
+<% 
+    // --- Logic ส่วนการคำนวณรายวิชา (เหมือนเดิม) ---
+    let uniqueSubjects = {};
+    if (data) {
+        Object.keys(data).forEach(day => {
+            Object.keys(data[day]).forEach(period => {
+                let cell = data[day][period];
+                if (cell && cell.subject_id) uniqueSubjects[cell.subject_id] = true;
+            });
+        });
+    }
+    let subjectList = Object.keys(uniqueSubjects).sort();
+
+    let totalTheory = 0; let totalPractice = 0; let totalCredit = 0; let totalHours = 0;
+
+    subjectList.forEach(subjId => {
+        let info = subjectMap[subjId] || { name: '-', theory: 0, practice: 0, credit: 0 };
+        totalTheory += parseInt(info.theory);
+        totalPractice += parseInt(info.practice);
+        totalCredit += parseInt(info.credit);
+        totalHours += (parseInt(info.theory) + parseInt(info.practice));
+    });
+
+    // แบ่งรายการวิชาเป็น 2 ฝั่งเพื่อใส่ในตารางด้านขวา
+    let splitIndex = Math.ceil(subjectList.length / 2);
+    let leftList = subjectList.slice(0, splitIndex);
+    let rightList = subjectList.slice(splitIndex);
+%>
+
+<div class="summary-container" style="
+    display: flex; 
+    width: 100%; 
+    box-sizing: border-box; 
+    border: 1px solid #000; 
+    border-bottom: 1px solid #000; 
+    background: white; 
+    margin-bottom: 20px; 
+    font-family: 'Sarabun', sans-serif;
+">
+    
+    <div class="info-box" style="
+        width: 25%; 
+        border-right: 1px solid #000; 
+        padding: 15px 10px; 
+        display: flex; 
+        flex-direction: column; 
+        justify-content: center; 
+        align-items: center; 
+        text-align: center;
+    ">
+        <img src="https://veis2.ac.th/wp-content/uploads/2022/06/cropped-SOUTHERN-REGION-2-new.png" 
+             style="width: 60px; height: auto; margin-bottom: 10px;" alt="Logo">
+        
+        <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; color: #000;">
+            วิทยาลัยเทคนิคพังงา
+        </div>
+        
+        <div style="width: 100%; text-align: center;">
+            <% if (typeof type !== 'undefined' && type === 'group') { %>
+                
+                <div style="margin-bottom: 8px;">
+                    <span style="font-size: 11px; color: #444; display: block;">ครูที่ปรึกษา</span>
+                    <strong style="font-size: 12px; color: #000;">
+                        <%= (typeof headerInfo !== 'undefined' && headerInfo.advisor) ? headerInfo.advisor : '-' %>
+                    </strong>
+                </div>
+                
+                <div>
+                    <span style="font-size: 11px; color: #444; display: block;">แผนกวิชา/กลุ่ม</span>
+                    <strong style="font-size: 13px; color: #000;">
+                        <%= (typeof headerInfo !== 'undefined' && headerInfo.name) ? headerInfo.name : id %>
+                    </strong>
+                </div>
+
+            <% } else if (typeof type !== 'undefined' && type === 'teacher') { %>
+                
+                <div>
+                    <span style="font-size: 11px; color: #444; display: block;">ครูผู้สอน</span>
+                    <strong style="font-size: 14px; color: #000;">
+                        <%= (typeof headerInfo !== 'undefined') ? headerInfo.name : id %>
+                    </strong>
+                </div>
+
+            <% } else { %>
+                
+                <div>
+                    <span style="font-size: 11px; color: #444; display: block;">ห้องเรียน</span>
+                    <strong style="font-size: 14px; color: #000;">
+                        <%= (typeof headerInfo !== 'undefined') ? headerInfo.name : id %>
+                    </strong>
+                </div>
+
+            <% } %>
+        </div>
+    </div>
+
+    <div class="subjects-box" style="width: 75%; display: flex;">
+        
+        <div class="box-split" style="flex: 1; border-right: 1px solid #000;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin: 0; border: none;">
+                <thead>
+                    <tr style="background: #f0f0f0; color: #000; height: 25px;">
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; width: 8%; border-top: none; border-left: none;">ที่</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; width: 20%; border-top: none;">รหัสวิชา</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; text-align: left; border-top: none;">ชื่อวิชา</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; width: 8%; border-top: none;">ท</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; width: 8%; border-top: none;">ป</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; width: 8%; border-top: none;">น</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; width: 10%; border-top: none; border-right: none;">รวม</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% leftList.forEach((subjId, index) => { 
+                        let info = subjectMap[subjId] || { name: '-', theory: 0, practice: 0, credit: 0 };
+                        let sum = parseInt(info.theory) + parseInt(info.practice);
+                    %>
+                    <tr>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center; border-left: none;"><%= index + 1 %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center;"><%= subjId %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><%= info.name %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center;"><%= info.theory %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center;"><%= info.practice %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center;"><%= info.credit %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; text-align: center; font-weight: bold; border-right: none;"><%= sum %></td>
+                    </tr>
+                    <% }); %>
+                    <% while (leftList.length < rightList.length + 1) { leftList.push(1); %>
+                        <tr><td colspan="7" style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-left: none; border-right: none;">&nbsp;</td></tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="box-split" style="flex: 1;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin: 0; border: none;">
+                <thead>
+                    <tr style="background: #f0f0f0; color: #000; height: 25px;">
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; width: 8%; border-top: none; border-left: none;">ที่</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; width: 20%; border-top: none;">รหัสวิชา</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; text-align: left; border-top: none;">ชื่อวิชา</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; width: 8%; border-top: none;">ท</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; width: 8%; border-top: none;">ป</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; border-right: 1px solid #000; width: 8%; border-top: none;">น</th>
+                        <th style="padding: 2px; border-bottom: 1px solid #000; width: 10%; border-top: none; border-right: none;">รวม</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% rightList.forEach((subjId, index) => { 
+                        let info = subjectMap[subjId] || { name: '-', theory: 0, practice: 0, credit: 0 };
+                        let sum = parseInt(info.theory) + parseInt(info.practice);
+                        let globalIndex = splitIndex + index + 1;
+                    %>
+                    <tr>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center; border-left: none;"><%= globalIndex %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center;"><%= subjId %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><%= info.name %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center;"><%= info.theory %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center;"><%= info.practice %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center;"><%= info.credit %></td>
+                        <td style="padding: 2px 5px; border-bottom: 1px solid #ccc; text-align: center; font-weight: bold; border-right: none;"><%= sum %></td>
+                    </tr>
+                    <% }); %>
+                    
+                    <tr style="background: #f0f0f0; font-weight: bold; height: 25px;">
+                        <td colspan="3" style="padding: 2px 5px; border-top: 1px solid #000; border-right: 1px solid #ccc; text-align: right; border-left: none;">รวมทั้งสิ้น</td>
+                        <td style="padding: 2px 5px; border-top: 1px solid #000; border-right: 1px solid #ccc; text-align: center;"><%= totalTheory %></td>
+                        <td style="padding: 2px 5px; border-top: 1px solid #000; border-right: 1px solid #ccc; text-align: center;"><%= totalPractice %></td>
+                        <td style="padding: 2px 5px; border-top: 1px solid #000; border-right: 1px solid #ccc; text-align: center;"><%= totalCredit %></td>
+                        <td style="padding: 2px 5px; border-top: 1px solid #000; text-align: center; border-right: none;"><%= totalHours %></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

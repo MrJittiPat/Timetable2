@@ -1,0 +1,180 @@
+<style>
+    /* --- 1. ตารางแบบ Fixed Layout (บังคับขนาด) --- */
+    table {
+        width: 100%;
+        border-collapse: collapse; 
+        border: 2px solid #000;    /* ขอบนอกสีดำหนา */
+        margin: 0;
+        table-layout: fixed;       /* ★ บังคับความกว้างเท่ากันทุกช่อง ★ */
+    }
+
+    th, td {
+        border: 1px solid #000;    /* เส้นขอบในสีดำ */
+        vertical-align: middle;
+        padding: 2px;
+        border-radius: 0 !important; /* สี่เหลี่ยมเป๊ะ */
+        
+        /* ★ บังคับความสูงเท่ากันทุกช่อง (แม้ไม่มีข้อมูล) ★ */
+        height: 60px; 
+        overflow: hidden; /* ป้องกันข้อความล้น */
+    }
+
+    /* --- 2. แต่งหัวตาราง --- */
+    th {
+        background-color: #f8f9fa;
+        color: #333;
+        height: 45px; /* หัวตารางเตี้ยกว่าช่องเรียนนิดนึง */
+    }
+
+    .header-corner {
+        background-color: #4e54c8; 
+        color: #ffffff; 
+        width: 80px; /* ความกว้างคอลัมน์แรก */
+    }
+
+    .time-label {
+        display: block;
+        font-weight: normal;
+        font-size: 10px;
+        color: #666;
+        margin-top: 2px;
+        white-space: nowrap;
+    }
+
+    /* --- 3. แต่งช่องวิชาเรียน (Class Cell) --- */
+    .class-cell {
+        background-color: #e3f2fd; /* สีฟ้าอ่อน */
+        color: #333;               /* ตัวหนังสือสีเทาเข้ม (ไม่ดำสนิท) */
+        cursor: pointer;
+        transition: background-color 0.2s;
+        /* เอาขอบน้ำเงินออกแล้ว */
+    }
+    .class-cell:hover { background-color: #bbdefb; }
+
+    /* จัดข้อความกึ่งกลาง */
+    .cell-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        width: 100%;
+        text-align: center;
+        gap: 2px;
+    }
+
+    .subj { 
+        font-weight: bold; font-size: 12px; color: #333; 
+        width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .detail { 
+        font-size: 10px; color: #555; 
+        width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .highlight { font-weight: bold; color: #d32f2f; font-size: 10px; }
+
+    /* พักเที่ยง */
+    .lunch-break {
+        background-color: #f0f0f0; 
+        color: #888; 
+        text-align: center;
+        font-size: 12px; 
+        writing-mode: vertical-rl;
+    }
+</style>
+
+<% 
+    // ตัวแปลงวันเป็นภาษาไทย
+    const dayMap = {
+        'Mon': 'จันทร์',
+        'Tue': 'อังคาร',
+        'Wed': 'พุธ',
+        'Thu': 'พฤหัสฯ',
+        'Fri': 'ศุกร์',
+        'Sat': 'เสาร์',
+        'Sun': 'อาทิตย์'
+    };
+%>
+
+<table>
+    <thead>
+        <tr>
+            <th class="header-corner" style="width: 80px;">วัน / คาบ</th>
+            
+            <% periods.forEach(p => { 
+                let start = 7 + p;
+                let end = 8 + p;
+                let timeStr = `${start}.00-${end}.00`;
+            %>
+                <th>
+                    <span style="font-size: 14px; font-weight: bold;"><%= p %></span>
+                    <span class="time-label"><%= timeStr %></span>
+                </th>
+            <% }); %>
+        </tr>
+    </thead>
+    <tbody>
+        <% days.forEach(day => { %>
+            <tr>
+                <td style="background: #eee; font-weight: bold; text-align: center; color: #333;">
+                    <%= dayMap[day] || day %>
+                </td>
+                
+                <% let skip = 0; %>
+
+                <% periods.forEach((p, index) => { %>
+                    <% 
+                        if (skip > 0) { skip--; return; }
+                        let currentCell = (data && data[day] && data[day][p]) ? data[day][p] : null;
+                        let colspan = 1;
+                    %>
+
+                    <% if (p === 5) { %>
+                        <td class="lunch-break">พัก</td>
+                    
+                    <% } else if (currentCell) { %>
+                        <% 
+                            // Logic ผสานเซลล์
+                            for (let nextP = p + 1; nextP <= 12; nextP++) {
+                                if (nextP === 5) break;
+                                let nextCell = (data && data[day] && data[day][nextP]) ? data[day][nextP] : null;
+                                if (nextCell &&
+                                    nextCell.subject_id === currentCell.subject_id &&
+                                    nextCell.teacher_id === currentCell.teacher_id &&
+                                    nextCell.room_id === currentCell.room_id &&
+                                    nextCell.group_id === currentCell.group_id
+                                ) { colspan++; } else { break; }
+                            }
+                            skip = colspan - 1;
+                        %>
+
+                        <td colspan="<%= colspan %>" class="class-cell">
+                            <div class="cell-content">
+                                <span class="subj"><%= currentCell.subject_id %></span>
+                                
+                                <% if (type === 'group') { %>
+                                    <span class="detail">ครู: <%= currentCell.teacher_id %></span>
+                                    <span class="highlight"><%= currentCell.room_id %></span>
+                                <% } else if (type === 'teacher') { %>
+                                    <span class="highlight"><%= currentCell.group_id %></span>
+                                    <span class="detail"><%= currentCell.room_id %></span>
+                                <% } else if (type === 'room') { %>
+                                    <span class="detail">ครู: <%= currentCell.teacher_id %></span>
+                                    <span class="highlight"><%= currentCell.group_id %></span>
+                                <% } %>
+
+                                <% if (colspan > 1) { %>
+                                    <span style="font-size: 9px; color: #666;">(<%= colspan %> คาบ)</span>
+                                <% } %>
+                            </div>
+                        </td>
+
+                    <% } else { %>
+                        <td></td>
+                    <% } %>
+
+                <% }); %>
+            </tr>
+        <% }); %>
+    </tbody>
+</table>

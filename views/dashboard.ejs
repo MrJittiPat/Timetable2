@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดตารางสอน AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --primary-gradient: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%); --secondary-bg: #f3f6f9; --text-dark: #333; }
+        body { font-family: 'Sarabun', sans-serif; background-color: var(--secondary-bg); margin: 0; padding: 0; }
+        
+        /* Styles ปกติ */
+        .header-section { background: var(--primary-gradient); padding: 30px 40px 80px; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .nav-header { display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto; }
+        .btn { padding: 8px 15px; border-radius: 20px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; color: white; border: none; cursor: pointer; transition: 0.2s;}
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-green { background: #2ecc71; } 
+        .btn-red { background: #ff6b6b; } 
+        .btn-print { background: #34495e; color: white; } 
+
+        .filter-container { max-width: 1400px; margin: -40px auto 30px; padding: 0 20px; }
+        .filter-bar { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); display: flex; gap: 20px; align-items: center; }
+        select { padding: 10px; border-radius: 8px; border: 1px solid #ddd; min-width: 200px; }
+
+        #timetable-display { max-width: 1400px; margin: 0 auto; padding: 0 20px 50px; }
+        .timetable-wrapper { display: none; margin-bottom: 50px; }
+        .timetable-wrapper.active { display: block; animation: slideUp 0.5s ease-out; }
+        .timetable-card { background: white; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); padding: 25px; overflow-x: auto; }
+
+        /* Header Info (สำหรับหน้าเว็บ) */
+        .info-header { display: flex; align-items: center; gap: 15px; padding-bottom: 15px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0; }
+        .info-icon { width: 45px; height: 45px; background: #e3f2fd; color: #1565c0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        .info-text h3 { margin: 0; font-size: 20px; color: #333; font-weight: 700; }
+        .info-text p { margin: 2px 0 0; font-size: 14px; color: #666; }
+        .badge-id { background: #6c757d; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px; vertical-align: middle; }
+        .badge-advisor { display: inline-flex; align-items: center; gap: 5px; background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-top: 5px; }
+
+        .master-table-wrapper { min-width: 1000px; width: 100%; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ========================================= */
+        /* ★★★ CSS สำหรับโหมดพิมพ์ (PDF) ★★★ */
+        /* ========================================= */
+        @media print {
+            @page { size: landscape; margin: 5mm; }
+            .header-section, .filter-container, .btn, .nav-header, .user-profile { display: none !important; }
+            
+            /* ซ่อนหัวตาราง Info เดิมในหน้าเว็บ */
+            .info-header { display: none !important; }
+
+            body { background-color: white !important; margin: 0 !important; padding: 0 !important; font-family: 'Sarabun', sans-serif !important; -webkit-print-color-adjust: exact; zoom: 85%; }
+            
+            #timetable-display { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: none !important; }
+            .timetable-wrapper { display: none !important; }
+            
+            /* ขึ้นหน้าใหม่ทุกตาราง */
+            .timetable-wrapper.active { display: block !important; position: relative; width: 100%; break-after: page; page-break-after: always; }
+            .timetable-wrapper.active:last-child { break-after: auto; page-break-after: auto; }
+
+            .timetable-card { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+
+            /* ปรับตารางสรุป */
+            .summary-container { width: 100% !important; margin: 0 auto 10px auto !important; border: 1px solid #000 !important; box-shadow: none !important; }
+
+            .master-table-wrapper { width: 100% !important; }
+
+            table { border: 1px solid #000 !important; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; background-color: white !important; font-size: 12px !important; }
+            th { background-color: #f0f0f0 !important; font-weight: bold !important; }
+            .class-cell { background-color: #fff !important; color: #000 !important; border: 1px solid #000 !important; box-shadow: none !important; }
+            .subj, .detail, .highlight, .time-label { color: #000 !important; }
+            .highlight { text-decoration: underline; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-section">
+        <div class="nav-header">
+            <div>
+                <h1 style="margin:0;">AI Smart Scheduler</h1>
+                <p style="margin:5px 0 0; opacity:0.9;">ระบบจัดตารางสอนอัตโนมัติ</p>
+            </div>
+            <div style="display:flex; gap:15px; align-items:center;">
+                <span style="background:rgba(255,255,255,0.2); padding:5px 12px; border-radius:20px; font-size:14px;">👤 <%= user %></span>
+                <button onclick="window.print()" class="btn btn-print">📄 พิมพ์ PDF</button>
+                <a href="/download" class="btn btn-green">⬇ CSV</a>
+                <a href="/logout" class="btn btn-red">✕ Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-container">
+        <div class="filter-bar">
+            <div>
+                <label style="display:block; font-size:12px; font-weight:bold; color:#666; margin-bottom:5px;">มุมมอง</label>
+                <select id="categorySelect" onchange="updateItemList()">
+                    <option value="group">กลุ่มเรียน</option>
+                    <option value="teacher">ครูผู้สอน</option>
+                    <option value="room">ห้องเรียน</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; font-size:12px; font-weight:bold; color:#666; margin-bottom:5px;">รายการ</label>
+                <select id="itemSelect" onchange="showTimetable()">
+                    <option value="">-- กรุณาเลือก --</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="timetable-display">
+        
+        <% groups.forEach(id => { 
+            let info = groupMap[id] || { name: 'ไม่ทราบชื่อ', advisor: '-' };
+        %>
+            <div id="table-group-<%= id %>" class="timetable-wrapper">
+                <div class="timetable-card">
+                    <div class="info-header">
+                        <div class="info-icon">🎓</div>
+                        <div class="info-text">
+                            <h3><%= info.name %> <span class="badge-id"><%= id %></span></h3>
+                            <div class="badge-advisor">👨‍🏫 ครูที่ปรึกษา: <%= info.advisor %></div>
+                        </div>
+                    </div>
+
+                    <div class="master-table-wrapper">
+                        <%- include('partials/summary', { 
+                            data: dataByGroup[id], 
+                            subjectMap: subjectMap, 
+                            headerInfo: info, 
+                            id: id, 
+                            type: 'group' 
+                        }) %>
+                        <%- include('partials/grid', { data: dataByGroup[id], days: daysOrder, periods: periodsOrder, type: 'group' }) %>
+                    </div>
+                </div>
+            </div>
+        <% }); %>
+
+        <% teachers.forEach(id => { 
+            let name = teacherMap[id] || 'ไม่ทราบชื่อ';
+        %>
+            <div id="table-teacher-<%= id %>" class="timetable-wrapper">
+                <div class="timetable-card">
+                    <div class="info-header">
+                        <div class="info-icon">👨‍🏫</div>
+                        <div class="info-text">
+                            <h3><%= name %> <span class="badge-id"><%= id %></span></h3>
+                            <p>ตารางสอนรายบุคคล</p>
+                        </div>
+                    </div>
+                    <div class="master-table-wrapper">
+                         <%- include('partials/summary', { 
+                            data: dataByTeacher[id], 
+                            subjectMap: subjectMap,
+                            headerInfo: { name: name, advisor: '' },
+                            id: id,
+                            type: 'teacher'
+                        }) %>
+                        <%- include('partials/grid', { data: dataByTeacher[id], days: daysOrder, periods: periodsOrder, type: 'teacher' }) %>
+                    </div>
+                </div>
+            </div>
+        <% }); %>
+
+        <% rooms.forEach(id => { 
+            let name = roomMap[id] || 'ไม่ทราบชื่อ';
+        %>
+            <div id="table-room-<%= id %>" class="timetable-wrapper">
+                <div class="timetable-card">
+                    <div class="info-header">
+                        <div class="info-icon">🏫</div>
+                        <div class="info-text">
+                            <h3><%= name %> <span class="badge-id"><%= id %></span></h3>
+                            <p>ตารางการใช้ห้องเรียน</p>
+                        </div>
+                    </div>
+                    <div class="master-table-wrapper">
+                         <%- include('partials/summary', { 
+                            data: dataByRoom[id], 
+                            subjectMap: subjectMap,
+                            headerInfo: { name: name, advisor: '' },
+                            id: id,
+                            type: 'room'
+                        }) %>
+                        <%- include('partials/grid', { data: dataByRoom[id], days: daysOrder, periods: periodsOrder, type: 'room' }) %>
+                    </div>
+                </div>
+            </div>
+        <% }); %>
+
+    </div>
+
+    <script>
+        const groupMap = <%- JSON.stringify(groupMap) %>;
+        const teacherMap = <%- JSON.stringify(teacherMap) %>;
+        const roomMap = <%- JSON.stringify(roomMap) %>;
+        const lists = {
+            group: <%- JSON.stringify(groups) %>,
+            teacher: <%- JSON.stringify(teachers) %>,
+            room: <%- JSON.stringify(rooms) %>
+        };
+        // ... (Script ส่วนนี้เหมือนเดิม) ...
+        function updateItemList() {
+            const category = document.getElementById('categorySelect').value;
+            const itemSelect = document.getElementById('itemSelect');
+            itemSelect.innerHTML = '<option value="">-- กรุณาเลือก --</option>';
+            const allOption = document.createElement('option');
+            allOption.value = 'ALL'; allOption.textContent = '📂 แสดงทั้งหมด'; itemSelect.appendChild(allOption);
+            if (lists[category]) {
+                lists[category].forEach(id => {
+                    const option = document.createElement('option');
+                    option.value = id;
+                    let label = id;
+                    if (category === 'group') label = `${id} : ${groupMap[id]?.name || ''}`;
+                    if (category === 'teacher') label = `${id} : ${teacherMap[id] || ''}`;
+                    if (category === 'room') label = `${id} : ${roomMap[id] || ''}`;
+                    option.textContent = label;
+                    itemSelect.appendChild(option);
+                });
+            }
+            hideAllTables();
+        }
+        function showTimetable() {
+            const category = document.getElementById('categorySelect').value;
+            const item = document.getElementById('itemSelect').value;
+            hideAllTables();
+            if (item === 'ALL') { if(lists[category]) lists[category].forEach(id => document.getElementById(`table-${category}-${id}`)?.classList.add('active')); }
+            else { document.getElementById(`table-${category}-${item}`)?.classList.add('active'); }
+        }
+        function hideAllTables() { document.querySelectorAll('.timetable-wrapper').forEach(el => el.classList.remove('active')); }
+        updateItemList();
+    </script>
+</body>
+</html>
